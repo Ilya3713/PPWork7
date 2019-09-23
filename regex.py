@@ -1,84 +1,49 @@
 from pprint import pprint
-import re
 import csv
-
-
-with open("phonebook_raw.csv") as f:
+import re
+with open("phonebook_raw.csv",encoding='utf-8') as f:
     rows = csv.reader(f, delimiter=",")
     contacts_list = list(rows)
-
-updated_contact_list = []
-names_list = []
-
-
-for contact in contacts_list:
-    s = ','
-    new_contact = s.join(contact)
-    pattern = "([А-ЯЁ][а-яё]+)(\s|\,)([А-ЯЁ][а-яё]+)(\s|,+)([А-ЯЁ][а-яё]+)?(,+)([А-ЯЁ]+[а-яё]*)?(,+)" \
-        "([a-zа-яёА-ЯЁ –]*)?(,+)(8\s|\+7\s\(|\s|\(|\+7|8\()?(\d{3})?(\)\s|\-|\))?(\d{3})?(-)?(\d{2})?(-)?" \
-            "(\d{2})?(\s\(|\s)?(доб\.)?(\s)?(\d{4})?(\,|\)\,)?(\w+\.?\w+\@\w+\.\w+)?"
-    res = re.sub(pattern, r"\1, \3, \5, \7, \9, +7(\12)\14-\16-\18 \20\22, \24", new_contact)
-    pattern2 = "\s\,"
-    res2 = re.sub(pattern2, r",", res)
-    pattern3 = "\,{2,10}"
-    res3 = re.sub(pattern3, r",", res2)
-    res3_split = res3.split(',')
-    last_name = res3_split[0]
-    updated_contact_list.append(res3_split)
-    names_list.append(last_name)
-
-unique_names_list = []
-for name in names_list:
-    if name in unique_names_list:
-        pass
-    else:
-        unique_names_list.append(name)
-
-names_dict = {}
-
-for name in unique_names_list:
-    name_index_list = []
-    for contact in updated_contact_list:
-        if name in contact:
-            name_index_list.append(updated_contact_list.index(contact))
-    names_dict[name] = name_index_list
-
-for name, i in names_dict.items():
-    if len(i) == 2:
-        updated_contact_list[i[0]] += updated_contact_list[i[1]]
-
-for contact in updated_contact_list:
-    if len(contact) <= 7 and ' +7()--' in contact:
-        updated_contact_list.remove(contact)
-
-new_list = []
-final_list = []
-
-for contact in updated_contact_list:
-    if contact != updated_contact_list[0]:
-        contact_list = []
-        s = ''
-        new_contact = s.join(contact)
-        contact_list.append(new_contact)
-        new_list.append(contact_list)
-    else:
+    pattern1 = re.compile("(\+7|8)(\s?)(\(495\)|495)(\s|\-?)(\d{3})(\-?)(\d{2})(\-?)(\d{2})")
+    pattern2 = re.compile("(\(?)(доб.)(\s)(\d{4})(\)?)")
+    final_list = []
+    for contact in contacts_list:
+        if len(contact[0].split()) == 3:
+            contact[2] = (contact[0].split())[2]
+            contact[1] = (contact[0].split())[1]
+            contact[0] = (contact[0].split())[0]
+        elif len(contact[0].split()) == 2:
+            contact[1] = (contact[0].split())[1]
+            contact[0] = (contact[0].split())[0]
+        else:
+            if len(contact[1].split()) == 2:
+                contact[2] = (contact[1].split())[1]
+                contact[1] = (contact[1].split())[0]
         final_list.append(contact)
 
-for contact in new_list:
-    pattern = "([А-ЯЁ][а-яё]+)(\s)([А-ЯЁ][а-яё]+)(\s)([А-ЯЁ][а-яё]+)(\s)([А-ЯЁа-яё]*)(\+7\(\)\-\-)?(\s)" \
-        "([a-zа-яёА-ЯЁ –]*)?(\+7\(\)\-\-)?(\+7\(\d{3}\)\d{3}\-\d{2}\-\d{2})?(\s)?([А-ЯЁ])?([а-яё]+\s)?([А-ЯЁ])" \
-            "?([а-яё]+\s)?([А-ЯЁ])?([а-яё]+\s)?([А-ЯЁа-яё]+)?(\s)?([a-z][а-яёА-ЯЁ –]+)?(\sдоб\.\d{4})?(\s)" \
-            "(\+7\(\)\-\-)?([А-ЯЁ][а-яё]+\s[А-ЯЁ][а-яё]+\s\+7\(\)\-\-\s)?(\w+\.?\w+\@\w+\.\w+)?"
-    res = re.sub(pattern, r"\1, \3, \5, \7, \22\10, \12\23, \27", contact[0])
-    pattern1 = "\,\s\,"
-    res1 = re.sub(pattern1, r",", res)
-    pattern2 = "\s\,"
-    res2 = re.sub(pattern1, r",", res1)
-    new_contact = res2.split(', ')
-    final_list.append(new_contact)
+    i=1
+    for record in final_list:
+        current_lastname = record[0]
+        for record_1 in final_list[i:len(final_list)]:
+            if current_lastname == record_1[0]: #нашли дубль
+                j=0
+                for element_of_record_1 in record_1[0:7]:
+                    if len(element_of_record_1) == 0:
+                        record_1[j]=record[j]
+                    j=j+1
+                final_list.remove(record)
+        i = i+1
 
-final_list[0][0].split(' ')
 
-with open("phonebook.csv", "w") as f:
-  datawriter = csv.writer(f, delimiter=',')
-  datawriter.writerows(final_list)
+    result = pattern1.findall(str(final_list))
+    result2 = pattern2.findall(str(final_list))
+    final_string_1 = pattern1.sub(r'+7(495)\5-\7-\9',str(final_list))
+    final_string_2 = pattern2.sub(r"доб.\4",str(final_string_1))
+
+    list_for_recording = final_string_2.split('[')
+    for element in list_for_recording:
+        print(element)
+
+    with open("phonebook.csv", "w", encoding='utf-8') as f:
+        datawriter = csv.writer(f, delimiter=' ')
+        datawriter.writerows(list_for_recording)
